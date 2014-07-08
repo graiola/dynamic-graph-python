@@ -125,6 +125,11 @@ Interpreter::Interpreter()
 #ifndef WIN32
   dlopen(libpython.c_str(), RTLD_LAZY | RTLD_GLOBAL);
 #endif
+
+  
+  PyGILState_STATE gstate;
+  gstate = PyGILState_Ensure();
+
   Py_Initialize();
   mainmod_ = PyImport_AddModule("__main__");
   Py_INCREF(mainmod_);
@@ -140,14 +145,22 @@ Interpreter::Interpreter()
       (PyModule_GetDict(PyImport_AddModule("traceback")), "format_exception");
   assert(PyCallable_Check(traceback_format_exception_));
   Py_INCREF(traceback_format_exception_);
+
+  PyGILState_Release(gstate);
 }
 
 Interpreter::~Interpreter()
 {
+
+  PyGILState_STATE gstate;
+  gstate = PyGILState_Ensure();
+
   //Py_DECREF(mainmod_);
   //Py_DECREF(globals_);
   //Py_DECREF(traceback_format_exception_);
   Py_Finalize();
+
+  PyGILState_Release(gstate);
 }
 
 std::string Interpreter::python( const std::string& command )
@@ -166,6 +179,10 @@ void Interpreter::python( const std::string& command, std::string& res,
   err = "";
 
   std::cout << command.c_str() << std::endl;
+
+  PyGILState_STATE gstate;
+  gstate = PyGILState_Ensure();
+
   PyObject* result = PyRun_String(command.c_str(), Py_eval_input, globals_,
                                   globals_);
   // Check if the result is null.
@@ -219,6 +236,9 @@ void Interpreter::python( const std::string& command, std::string& res,
   Py_DecRef(stdout_obj);
   Py_DecRef(result2);
   Py_DecRef(result);
+
+  PyGILState_Release(gstate);
+
   return;
 }
 
@@ -229,6 +249,10 @@ PyObject* Interpreter::globals()
 
 void Interpreter::runPythonFile( std::string filename )
 {
+
+  PyGILState_STATE gstate;
+  gstate = PyGILState_Ensure();
+
   PyObject* pymainContext = globals_;
   PyRun_File(fopen( filename.c_str(),"r" ), filename.c_str(),
              Py_file_input, pymainContext,pymainContext);
@@ -237,6 +261,9 @@ void Interpreter::runPythonFile( std::string filename )
     std::cout << "Error occures..." << std::endl;
     PyErr_Print();
   }
+
+   PyGILState_Release(gstate);
+
 }
 
 void Interpreter::runMain( void )
